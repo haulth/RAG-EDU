@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chatbot-quy-che-dao-tao"
+version = "0.1.0"
+description = "Vietnamese academic regulation chatbot using RAG, FastAPI, and a unified web chat UI."
+readme = "README.md"
+requires-python = ">=3.9,<3.11"
+license = { text = "MIT" }
+authors = [
+  { name = "hault" }
+]
+dynamic = ["dependencies"]
+
+[project.urls]
+Homepage = "https://github.com/your-org/ui-bot"
+Repository = "https://github.com/your-org/ui-bot"
+
+[project.scripts]
+chatbotedu-api = "cli:main_api"
+chatbotedu-ui = "cli:main_ui"
+chatbotedu-gradio = "cli:main_gradio"
+chatbotedu-test = "cli:main_test"
+chatbotedu-download-models = "cli:main_download_models"
+
+[tool.setuptools]
+py-modules = [
+  "api_server",
+  "cli",
+  "config",
+  "download_models",
+  "llm_backends",
+  "main",
+  "run_random_faq_system_test",
+  "runtime_bootstrap",
+  "runtime_service"
+]
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }

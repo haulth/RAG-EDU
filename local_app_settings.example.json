@@ -1,0 +1,31 @@
+{
+  "providers": {
+    "default_provider": "groq",
+    "groq": {
+      "base_url": "https://api.groq.com/openai/v1",
+      "api_key": "",
+      "model": "llama-3.3-70b-versatile",
+      "timeout_seconds": 120
+    },
+    "ollama": {
+      "base_url": "http://192.168.1.200:11434/",
+      "model": "gpt-oss:20b",
+      "timeout_seconds": 600
+    }
+  },
+  "chat_defaults": {
+    "llm_provider": "groq",
+    "retrieval_mode": "dual",
+    "top_k": 5,
+    "use_reranking": true,
+    "use_mmr": true,
+    "use_hierarchical_expansion": true,
+    "use_evidence_selection": true
+  },
+  "test_defaults": {
+    "provider_preset": "groq_70b",
+    "sample_size": 250,
+    "seed": 42,
+    "execution_path": "service"
+  }
+}

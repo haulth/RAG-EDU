@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quy Chế Chat UI</title>
+  <style>
+    :root {
+      --bg: #f4f7f2;
+      --panel: rgba(255,255,255,.92);
+      --soft: #f8fbf7;
+      --text: #102417;
+      --muted: #5d6d62;
+      --line: #d8e4da;
+      --accent: #14855e;
+      --accent-2: #0f6a4b;
+      --accent-soft: #e8f5ed;
+      --danger: #b54b4b;
+      --shadow: 0 24px 60px rgba(16,36,23,.08);
+      --display: "Space Grotesk","Segoe UI",sans-serif;
+      --sans: "IBM Plex Sans","Segoe UI",sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(20,133,94,.12), transparent 26%),
+        radial-gradient(circle at bottom right, rgba(194,223,203,.42), transparent 30%),
+        var(--bg);
+    }
+    .shell {
+      height: 100vh;
+      display: grid;
+      grid-template-columns: 290px minmax(0,1fr) 360px;
+      gap: 18px;
+      padding: 18px;
+    }
+    .panel {
+      min-height: 0;
+      overflow: hidden;
+      border: 1px solid rgba(216,228,218,.95);
+      border-radius: 24px;
+      background: var(--panel);
+      backdrop-filter: blur(12px);
+      box-shadow: var(--shadow);
+    }
+    .sidebar,.inspector {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 18px;
+      min-height: 0;
+    }
+    .brand { display:flex; gap:12px; align-items:center; }
+    .brand-badge {
+      width: 50px; height: 50px; border-radius: 16px;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg,var(--accent-2),var(--accent));
+      color: #fff; font-size: 22px;
+    }
+    .brand h1 { margin:0; font-size:20px; font-family:var(--display); }
+    .brand p { margin:4px 0 0; color:var(--muted); font-size:13px; }
+    .card {
+      border:1px solid var(--line);
+      border-radius:18px;
+      background:var(--soft);
+      padding:14px;
+    }
+    .section {
+      margin:0 0 8px;
+      color:var(--muted);
+      font-size:12px;
+      font-weight:700;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+    }
+    button, select, input, textarea { font: inherit; }
+    button {
+      border:0; border-radius:14px; cursor:pointer;
+      transition:transform .16s ease, background .16s ease;
+    }
+    button:hover { transform:translateY(-1px); }
+    .primary {
+      background: linear-gradient(135deg,var(--accent),var(--accent-2));
+      color:#fff; padding:12px 16px; font-weight:600;
+    }
+    .secondary {
+      background:#fff; border:1px solid var(--line); color:var(--text); padding:10px 14px;
+    }
+    .status-row {
+      display:flex; gap:12px; align-items:center; justify-content:space-between;
+    }
+    .pill {
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 10px; border-radius:999px;
+      font-size:13px; font-weight:700;
+      background:var(--accent-soft); color:var(--accent-2);
+    }
+    .pill.off { background:#fff1f0; color:var(--danger); }
+    .conv-list { display:flex; flex-direction:column; gap:10px; overflow:auto; padding-right:4px; }
+    .conv {
+      width:100%; text-align:left; background:#fff; border:1px solid var(--line); color:var(--text);
+      border-radius:16px; padding:14px;
+    }
+    .conv.active { background:var(--accent-soft); border-color:var(--accent); }
+    .conv small { display:block; color:var(--muted); margin-top:6px; }
+    .field { display:flex; flex-direction:column; gap:6px; color:var(--muted); font-size:13px; font-weight:600; }
+    .field.hidden { display:none; }
+    .modal-overlay {
+      position:fixed;
+      inset:0;
+      background:rgba(16,36,23,.32);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+      z-index:50;
+    }
+    .modal-overlay.open { display:flex; }
+    .modal {
+      width:min(760px,100%);
+      max-height:min(86vh,900px);
+      overflow:auto;
+      border:1px solid var(--line);
+      border-radius:24px;
+      background:rgba(255,255,255,.98);
+      box-shadow:var(--shadow);
+      padding:22px;
+    }
+    .modal-header {
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:16px;
+      margin-bottom:18px;
+    }
+    .modal-header h3 {
+      margin:0;
+      font-family:var(--display);
+      font-size:24px;
+    }
+    .modal-header p {
+      margin:6px 0 0;
+      color:var(--muted);
+      line-height:1.6;
+    }
+    .modal-actions {
+      display:flex;
+      justify-content:flex-end;
+      gap:10px;
+      margin-top:18px;
+    }
+    select, input[type="number"], input[type="text"], input[type="password"], textarea {
+      width:100%; background:#fff; color:var(--text);
+      border:1px solid var(--line); border-radius:14px; padding:11px 12px;
+    }
+    .main {
+      min-height:0;
+      display:grid;
+      grid-template-rows:auto 1fr auto;
+      overflow:hidden;
+    }
+    .header {
+      display:flex; justify-content:space-between; gap:16px; align-items:flex-start;
+      padding:22px 24px 12px; border-bottom:1px solid var(--line);
+    }
+    .header h2 { margin:0; font-family:var(--display); font-size:26px; }
+    .header p { margin:6px 0 0; color:var(--muted); }
+    .header-actions {
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+    .settings-trigger {
+      padding:12px 16px;
+      background:#fff;
+      border:1px solid var(--line);
+      color:var(--text);
+      font-weight:700;
+    }
+    .settings {
+      width:100%;
+      display:grid; gap:12px;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+    .scroll {
+      overflow:auto; padding:24px; display:flex; flex-direction:column; gap:18px;
+      background:linear-gradient(180deg,rgba(232,245,237,.55),rgba(255,255,255,.76));
+    }
+    .welcome {
+      border:1px dashed var(--line); border-radius:20px; background:rgba(255,255,255,.75); padding:22px;
+    }
+    .welcome h3 { margin:0 0 10px; font-family:var(--display); font-size:24px; }
+    .bubble { display:flex; gap:12px; align-items:flex-start; }
+    .bubble.user { justify-content:flex-end; }
+    .avatar {
+      width:38px; height:38px; border-radius:14px; display:grid; place-items:center; flex-shrink:0;
+      font-size:14px; font-weight:700;
+    }
+    .avatar.assistant { background:var(--accent-soft); color:var(--accent-2); }
+    .avatar.user { background:#16362a; color:#fff; order:2; }
+    .message {
+      max-width:min(86%,820px);
+      border-radius:20px; padding:14px 16px; line-height:1.65; box-shadow:0 10px 24px rgba(16,36,23,.06);
+      white-space:pre-wrap; word-break:break-word;
+    }
+    .assistant .message { background:#fff; border:1px solid var(--line); border-top-left-radius:8px; }
+    .user .message { background:linear-gradient(135deg,#153327,#1e4b37); color:#fff; border-top-right-radius:8px; }
+    .meta { margin-top:10px; font-size:12px; color:var(--muted); }
+    .composer {
+      padding:16px 18px 18px; border-top:1px solid var(--line); background:rgba(255,255,255,.94);
+      display:grid; gap:12px;
+    }
+    .chip-row { display:flex; flex-wrap:wrap; gap:10px; }
+    .chip {
+      padding:10px 12px; border-radius:999px; border:1px solid var(--line); background:#fff;
+      font-size:13px; font-weight:700;
+    }
+    .compose-row { display:grid; grid-template-columns:1fr auto; gap:12px; align-items:end; }
+    textarea { min-height:64px; max-height:180px; resize:none; }
+    .send { min-width:132px; height:64px; }
+    .metrics { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .metric {
+      border:1px solid var(--line); border-radius:18px; background:var(--soft); padding:14px;
+    }
+    .metric span {
+      display:block; color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px;
+    }
+    .metric strong { font-family:var(--display); font-size:24px; }
+    .inspect-scroll { overflow:auto; display:flex; flex-direction:column; gap:14px; padding-right:4px; flex:1; min-height:0; }
+    .source pre {
+      margin:8px 0 0; white-space:pre-wrap; font-family:var(--sans); font-size:13px; color:var(--muted);
+    }
+    .message.loading {
+      min-width: 320px;
+    }
+    .progress-wrap {
+      display: grid;
+      gap: 12px;
+    }
+    .progress-text {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      background: #e5efe8;
+      overflow: hidden;
+      position: relative;
+    }
+    .progress-fill {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 42%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent), #39b884, var(--accent-2));
+      animation: progress-slide 1.3s infinite ease-in-out;
+    }
+    .answer-refs {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .answer-refs strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--text);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .answer-refs ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+    .answer-refs li + li {
+      margin-top: 4px;
+    }
+    .dot {
+      display:inline-block; width:10px; height:10px; border-radius:999px; background:var(--accent);
+      animation:blink 1s infinite ease-in-out;
+    }
+    @keyframes blink { 0%,100%{opacity:.25;transform:scale(.9)} 50%{opacity:1;transform:scale(1)} }
+    @keyframes progress-slide {
+      0% { transform: translateX(-110%); }
+      100% { transform: translateX(260%); }
+    }
+    @media (max-width:1220px) {
+      .shell { grid-template-columns:260px minmax(0,1fr); }
+      .inspector { grid-column:1 / -1; }
+    }
+    @media (max-width:880px) {
+      .shell { grid-template-columns:1fr; height:auto; }
+      .panel { max-height:none; }
+      .settings { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .compose-row { grid-template-columns:1fr; }
+      .send { width:100%; height:52px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="panel sidebar">
+      <div class="brand">
+        <div class="brand-badge">🎓</div>
+        <div>
+          <h1>Chatbot Đào tạo</h1>
+          <p>UI demo mô hình RAG</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <p class="section">Runtime</p>
+        <div class="status-row">
+          <div id="runtimeStatus" class="pill off">Chưa nạp</div>
+          <button id="warmBtn" class="secondary" type="button">Nạp runtime</button>
+        </div>
+        <div class="status-row" style="margin-top:10px;">
+          <button id="reloadKnowledgeBtn" class="secondary" type="button">Rechunk data</button>
+        </div>
+        <p id="runtimeMeta" style="margin:10px 0 0;color:var(--muted);font-size:13px;">Server sẽ tự nạp runtime ngay khi khởi động.</p>
+      </div>
+
+      <button id="newChatBtn" class="primary" type="button">+ Cuộc trò chuyện mới</button>
+
+      <div class="card" style="display:flex;align-items:center;justify-content:space-between;">
+        <p class="section" style="margin:0;">Lịch sử chat</p>
+        <small id="chatCount" style="color:var(--muted);">0 cuộc hội thoại</small>
+      </div>
+      <div id="conversationList" class="conv-list"></div>
+    </aside>
+
+    <main class="panel main">
+      <div class="header">
+        <div>
+          <h2>Chat UI</h2>
+          <p>Hệ thống chưa lưu lịch sử trò chuyện</p>
+        </div>
+        <div class="header-actions">
+          <button id="openSettingsBtn" class="settings-trigger" type="button">Thiết lập</button>
+        </div>
+      </div>
+
+      <div id="chatScroll" class="scroll">
+        <div class="welcome">
+          <h3>Giao diện mới dành cho test vận hành</h3>
+          <p style="margin:0;color:var(--muted);line-height:1.7;">
+            Đây là bước chuyển từ giao diện test kiểu notebook/Gradio sang mô hình gần production hơn:
+            `runtime -> API -> chat UI`.
+          </p>
+        </div>
+      </div>
+
+      <div class="composer">
+        <!-- <div class="chip-row">
+          <div class="chip">API: <strong>/api/chat</strong></div>
+          <div class="chip">UI: <strong>Standalone</strong></div>
+          <div class="chip">Fallback: <strong>Gradio cũ</strong></div>
+        </div> -->
+        <div class="compose-row">
+          <textarea id="messageInput" placeholder="Nhập câu hỏi của bạn..."></textarea>
+          <button id="sendBtn" class="primary send" type="button">Gửi câu hỏi</button>
+        </div>
+      </div>
+    </main>
+
+    <aside class="panel inspector">
+      <div>
+        <p class="section">Phiên trả lời gần nhất</p>
+        <div class="metrics">
+          <div class="metric"><span>Confidence</span><strong id="metricConfidence">--</strong></div>
+          <div class="metric"><span>Groundedness</span><strong id="metricGroundedness">--</strong></div>
+          <div class="metric"><span>Provenance</span><strong id="metricProvenance">--</strong></div>
+          <div class="metric"><span>Faithfulness</span><strong id="metricFaithfulness">--</strong></div>
+          <div class="metric"><span>Relevance</span><strong id="metricRelevance">--</strong></div>
+          <div class="metric"><span>Citation Support</span><strong id="metricCitationSupport">--</strong></div>
+          <div class="metric"><span>Thời gian</span><strong id="metricTime">--</strong></div>
+        </div>
+      </div>
+
+
+      <div class="inspect-scroll">
+        <div class="card source"><p class="section" style="margin-bottom:0;">Tài liệu tham khảo</p><pre id="citationsBox">Chưa có dữ liệu.</pre></div>
+        <div class="card source"><p class="section" style="margin-bottom:0;">Bằng chứng đã chọn</p><pre id="selectedEvidenceBox">Chưa có dữ liệu.</pre></div>
+        <div class="card source"><p class="section" style="margin-bottom:0;">Dấu vết đối chiếu</p><pre id="evidenceSpansBox">Chưa có dữ liệu.</pre></div>
+        <div class="card source"><p class="section" style="margin-bottom:0;">Đoạn truy xuất</p><pre id="retrievedChunksBox">Chưa có dữ liệu.</pre></div>
+      </div>
+    </aside>
+  </div>
+
+  <div id="settingsModal" class="modal-overlay" aria-hidden="true">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h3>Thiết lập</h3>
+          <p>Chọn backend sinh câu trả lời và điều chỉnh các tham số retrieval khi cần.</p>
+        </div>
+        <button id="closeSettingsBtn" class="secondary" type="button">Đóng</button>
+      </div>
+      <div class="settings">
+        <label class="field">LLM backend
+          <select id="llmProviderSelect">
+            <option value="local">Chạy trên máy hiện tại</option>
+            <option value="groq">Groq API</option>
+            <option value="ollama">Ollama</option>
+          </select>
+        </label>
+        <label class="field hidden" id="groqApiKeyField">Groq API key
+          <input id="groqApiKeyInput" type="password" placeholder="Nhập Groq API key nếu muốn override">
+        </label>
+        <label class="field" id="remoteModelField">Model
+          <input id="remoteModelInput" type="text" value="llama-3.3-70b-versatile" list="remoteModelOptions">
+          <datalist id="remoteModelOptions"></datalist>
+        </label>
+        <label class="field hidden" id="ollamaUrlField">Ollama IP / URL
+          <input id="ollamaUrlInput" type="text" value="http://127.0.0.1:11434">
+        </label>
+        <label class="field">Retrieval
+          <select id="modeSelect">
+            <option value="dual">Dual</option>
+            <option value="hybrid">Hybrid</option>
+            <option value="hyde">HyDE</option>
+          </select>
+        </label>
+        <label class="field">Top-K
+          <input id="topKInput" type="number" min="1" max="20" value="5">
+        </label>
+        <label class="field">Reranking
+          <select id="rerankSelect">
+            <option value="true">Bật</option>
+            <option value="false">Tắt</option>
+          </select>
+        </label>
+        <label class="field">MMR
+          <select id="mmrSelect">
+            <option value="true">Bật</option>
+            <option value="false">Tắt</option>
+          </select>
+        </label>
+        <label class="field">Semantic highlighting
+          <select id="semanticHighlightingSelect">
+            <option value="true">Bật</option>
+            <option value="false">Tắt</option>
+          </select>
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button id="saveSettingsBtn" class="primary" type="button">Lưu thiết lập</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "ui-bot-open-chat-ui-v2";
+    const state = { conversations: [], activeId: null, pending: false, settings: null };
+    const MODEL_SUGGESTIONS = {
+      groq: ["llama-3.3-70b-versatile"],
+      ollama: ["qwen2.5:7b-instruct", "gpt-oss:20b", "gemma4:31b", "gemma4:e4b", "glm-4.7-flash:latest"],
+    };
+
+    const els = {
+      runtimeStatus: document.getElementById("runtimeStatus"),
+      runtimeMeta: document.getElementById("runtimeMeta"),
+      warmBtn: document.getElementById("warmBtn"),
+      reloadKnowledgeBtn: document.getElementById("reloadKnowledgeBtn"),
+      newChatBtn: document.getElementById("newChatBtn"),
+      openSettingsBtn: document.getElementById("openSettingsBtn"),
+      closeSettingsBtn: document.getElementById("closeSettingsBtn"),
+      saveSettingsBtn: document.getElementById("saveSettingsBtn"),
+      settingsModal: document.getElementById("settingsModal"),
+      chatCount: document.getElementById("chatCount"),
+      conversationList: document.getElementById("conversationList"),
+      chatScroll: document.getElementById("chatScroll"),
+      messageInput: document.getElementById("messageInput"),
+      sendBtn: document.getElementById("sendBtn"),
+      llmProviderSelect: document.getElementById("llmProviderSelect"),
+      groqApiKeyField: document.getElementById("groqApiKeyField"),
+      groqApiKeyInput: document.getElementById("groqApiKeyInput"),
+      remoteModelField: document.getElementById("remoteModelField"),
+      remoteModelInput: document.getElementById("remoteModelInput"),
+      remoteModelOptions: document.getElementById("remoteModelOptions"),
+      ollamaUrlField: document.getElementById("ollamaUrlField"),
+      ollamaUrlInput: document.getElementById("ollamaUrlInput"),
+      modeSelect: document.getElementById("modeSelect"),
+      topKInput: document.getElementById("topKInput"),
+      rerankSelect: document.getElementById("rerankSelect"),
+      mmrSelect: document.getElementById("mmrSelect"),
+      semanticHighlightingSelect: document.getElementById("semanticHighlightingSelect"),
+      metricConfidence: document.getElementById("metricConfidence"),
+      metricGroundedness: document.getElementById("metricGroundedness"),
+      metricProvenance: document.getElementById("metricProvenance"),
+      metricFaithfulness: document.getElementById("metricFaithfulness"),
+      metricRelevance: document.getElementById("metricRelevance"),
+      metricCitationSupport: document.getElementById("metricCitationSupport"),
+      metricTime: document.getElementById("metricTime"),
+      citationsBox: document.getElementById("citationsBox"),
+      selectedEvidenceBox: document.getElementById("selectedEvidenceBox"),
+      evidenceSpansBox: document.getElementById("evidenceSpansBox"),
+      retrievedChunksBox: document.getElementById("retrievedChunksBox"),
+    };
+
+    const uid = () => "chat_" + Math.random().toString(36).slice(2, 10);
+    const esc = (value) => (value || "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+    const fmtPct = (v) => (v === null || v === undefined || Number.isNaN(Number(v))) ? "--" : `${(Number(v) * 100).toFixed(2)}%`;
+    const fmtSec = (v) => (v === null || v === undefined || Number.isNaN(Number(v))) ? "--" : `${Number(v).toFixed(2)}s`;
+    const active = () => state.conversations.find((item) => item.id === state.activeId) || null;
+    const defaultProviderSettings = {
+      default_provider: "local",
+      groq: { model: "llama-3.3-70b-versatile", configured: false },
+      ollama: { base_url: "http://127.0.0.1:11434", model: "qwen2.5:7b-instruct" },
+    };
+    const currentSecrets = () => ({
+      groq_api_key: els.groqApiKeyInput.value.trim(),
+    });
+    const currentSettings = () => {
+      const previous = state.settings || {};
+      return {
+        ...previous,
+        llm_provider: els.llmProviderSelect.value,
+        remote_model: els.remoteModelInput.value.trim(),
+        ollama_base_url: els.ollamaUrlInput.value.trim(),
+        retrieval_mode: els.modeSelect.value,
+        top_k: Number(els.topKInput.value || 5),
+        use_reranking: els.rerankSelect.value === "true",
+        use_mmr: els.mmrSelect.value === "true",
+        use_semantic_highlighting: els.semanticHighlightingSelect.value === "true",
+        use_hierarchical_expansion: previous.use_hierarchical_expansion !== false,
+        use_evidence_selection: previous.use_evidence_selection !== false,
+      };
+    };
+
+    function persist() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ conversations: state.conversations, activeId: state.activeId }));
+    }
+
+    function applySettings(settings) {
+      const safe = settings || {};
+      els.llmProviderSelect.value = safe.llm_provider || defaultProviderSettings.default_provider || "local";
+      els.remoteModelInput.value = safe.remote_model || (
+        els.llmProviderSelect.value === "ollama"
+          ? (defaultProviderSettings.ollama.model || "qwen2.5:7b-instruct")
+          : (defaultProviderSettings.groq.model || "llama-3.3-70b-versatile")
+      );
+      els.ollamaUrlInput.value = safe.ollama_base_url || defaultProviderSettings.ollama.base_url || "http://127.0.0.1:11434";
+      els.modeSelect.value = safe.retrieval_mode || "dual";
+      els.topKInput.value = safe.top_k || 5;
+      els.rerankSelect.value = String(safe.use_reranking !== false);
+      els.mmrSelect.value = String(safe.use_mmr !== false);
+      els.semanticHighlightingSelect.value = String(safe.use_semantic_highlighting !== false);
+      updateProviderControls();
+    }
+
+    function renderRemoteModelOptions(provider = els.llmProviderSelect.value) {
+      const defaultGroqModel = defaultProviderSettings.groq.model || "llama-3.3-70b-versatile";
+      const defaultOllamaModel = defaultProviderSettings.ollama.model || "qwen2.5:7b-instruct";
+      const baseOptions = provider === "ollama"
+        ? [defaultOllamaModel, ...MODEL_SUGGESTIONS.ollama]
+        : provider === "groq"
+          ? [defaultGroqModel, ...MODEL_SUGGESTIONS.groq]
+          : [];
+      const uniqueOptions = [...new Set(baseOptions.map((item) => String(item || "").trim()).filter(Boolean))];
+      els.remoteModelOptions.innerHTML = uniqueOptions
+        .map((item) => `<option value="${esc(item)}"></option>`)
+        .join("");
+    }
+
+    async function loadSharedSettings() {
+      try {
+        const response = await fetch("/api/settings");
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.detail || "Không tải được thiết lập.");
+        if (payload?.providers) {
+          defaultProviderSettings.default_provider = payload.providers.default_provider || defaultProviderSettings.default_provider;
+          defaultProviderSettings.groq = { ...defaultProviderSettings.groq, ...(payload.providers.groq || {}) };
+          defaultProviderSettings.ollama = { ...defaultProviderSettings.ollama, ...(payload.providers.ollama || {}) };
+        }
+        state.settings = payload?.chat_defaults || null;
+        applySettings(state.settings || {});
+      } catch (error) {
+        console.warn("Không tải được thiết lập chia sẻ:", error);
+        state.settings = currentSettings();
+      }
+    }
+
+    async function saveSharedSettings(settings) {
+      const response = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...settings,
+          groq_api_key: settings.llm_provider === "groq" ? (currentSecrets().groq_api_key || null) : null,
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.detail || "Không lưu được thiết lập.");
+      if (payload?.providers) {
+        defaultProviderSettings.default_provider = payload.providers.default_provider || defaultProviderSettings.default_provider;
+        defaultProviderSettings.groq = { ...defaultProviderSettings.groq, ...(payload.providers.groq || {}) };
+        defaultProviderSettings.ollama = { ...defaultProviderSettings.ollama, ...(payload.providers.ollama || {}) };
+      }
+      state.settings = payload?.chat_defaults || settings;
+      applySettings(state.settings || settings);
+      return payload;
+    }
+
+    function updateProviderControls() {
+      const provider = els.llmProviderSelect.value;
+      const isOllama = provider === "ollama";
+      const isGroq = provider === "groq";
+      const currentModel = els.remoteModelInput.value.trim();
+      const groqDefaultModel = defaultProviderSettings.groq.model || "llama-3.3-70b-versatile";
+      const ollamaDefaultModel = defaultProviderSettings.ollama.model || "qwen2.5:7b-instruct";
+
+      els.groqApiKeyField.classList.toggle("hidden", !isGroq);
+      els.ollamaUrlField.classList.toggle("hidden", !isOllama);
+      els.remoteModelField.classList.toggle("hidden", provider === "local");
+
+      if (provider === "groq" && (!currentModel || currentModel === ollamaDefaultModel)) {
+        els.remoteModelInput.value = groqDefaultModel;
+      }
+      if (isOllama && (!currentModel || currentModel === groqDefaultModel)) {
+        els.remoteModelInput.value = ollamaDefaultModel;
+      }
+
+      renderRemoteModelOptions(provider);
+    }
+
+    function openSettingsModal() {
+      els.settingsModal.classList.add("open");
+      els.settingsModal.setAttribute("aria-hidden", "false");
+    }
+
+    function closeSettingsModal() {
+      els.settingsModal.classList.remove("open");
+      els.settingsModal.setAttribute("aria-hidden", "true");
+    }
+
+    function addConversation(title = "Cuộc trò chuyện mới") {
+      const item = {
+        id: uid(),
+        title,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: [],
+        lastResult: null,
+      };
+      state.conversations.unshift(item);
+      state.activeId = item.id;
+      persist();
+      render();
+      return item;
+    }
+
+    function load() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return addConversation();
+      try {
+        const parsed = JSON.parse(raw);
+        state.conversations = Array.isArray(parsed.conversations) ? parsed.conversations : [];
+        state.activeId = parsed.activeId || null;
+      } catch {
+        state.conversations = [];
+        state.activeId = null;
+      }
+      if (!state.conversations.length) addConversation();
+      if (!state.activeId || !state.conversations.some((item) => item.id === state.activeId)) {
+        state.activeId = state.conversations[0].id;
+      }
+    }
+
+    function renderList() {
+      els.chatCount.textContent = `${state.conversations.length} cuộc hội thoại`;
+      els.conversationList.innerHTML = "";
+      state.conversations.forEach((item) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "conv" + (item.id === state.activeId ? " active" : "");
+        btn.innerHTML = `<strong>${esc(item.title || "Cuộc trò chuyện chưa tên")}</strong><small>${new Date(item.updatedAt || Date.now()).toLocaleString("vi-VN")}</small>`;
+        btn.addEventListener("click", () => { state.activeId = item.id; persist(); render(); });
+        els.conversationList.appendChild(btn);
+      });
+    }
+
+    function renderMessages() {
+      const conversation = active();
+      els.chatScroll.innerHTML = "";
+      if (!conversation || !conversation.messages.length) {
+        const empty = document.createElement("div");
+        empty.className = "welcome";
+        empty.innerHTML = `<h3>Sẵn sàng để hỏi</h3><p style="margin:0;color:var(--muted);line-height:1.7;">Có thể dùng giao diện này để test</code>.</p>`;
+        els.chatScroll.appendChild(empty);
+        return;
+      }
+      conversation.messages.forEach((message) => {
+        const row = document.createElement("div");
+        row.className = `bubble ${message.role}`;
+        const refs = message.showReferences !== false && Array.isArray(message.references) && message.references.length
+          ? `<div class="answer-refs"><strong>Tài liệu tham khảo</strong><ul>${message.references.map((item) => `<li>${esc(item)}</li>`).join("")}</ul></div>`
+          : "";
+        const loadingBlock = message.loading
+          ? `<div class="message loading"><div class="progress-wrap"><div class="progress-text">Đang truy xuất tài liệu và sinh câu trả lời...</div><div class="progress-bar"><div class="progress-fill"></div></div></div>${message.meta ? `<div class="meta">${esc(message.meta)}</div>` : ""}</div>`
+          : `<div class="message">${esc(message.content).replaceAll("\\n", "<br>")}${refs}${message.meta ? `<div class="meta">${esc(message.meta)}</div>` : ""}</div>`;
+        row.innerHTML = `
+          <div class="avatar ${message.role}">${message.role === "assistant" ? "AI" : "Bạn"}</div>
+          ${loadingBlock}
+        `;
+        els.chatScroll.appendChild(row);
+      });
+      els.chatScroll.scrollTop = els.chatScroll.scrollHeight;
+    }
+
+    function renderInspector() {
+      const result = active()?.lastResult || null;
+      const quality = result?.quality_metrics || {};
+      if (!result || result.show_metrics === false || result?.response_type === "basic_intent") {
+        els.metricConfidence.textContent = "--";
+        els.metricGroundedness.textContent = "--";
+        els.metricProvenance.textContent = "--";
+        els.metricFaithfulness.textContent = "--";
+        els.metricRelevance.textContent = "--";
+        els.metricCitationSupport.textContent = "--";
+        els.metricTime.textContent = "--";
+        const emptyMessage = result
+          ? "Không áp dụng cho câu chào hỏi hoặc câu hỏi cơ bản."
+          : "Chưa có dữ liệu.";
+        els.citationsBox.textContent = emptyMessage;
+        els.selectedEvidenceBox.textContent = result ? "Không áp dụng." : "Chưa có dữ liệu.";
+        els.evidenceSpansBox.textContent = result ? "Không áp dụng." : "Chưa có dữ liệu.";
+        els.retrievedChunksBox.textContent = result ? "Không áp dụng." : "Chưa có dữ liệu.";
+        return;
+      }
+
+      els.metricConfidence.textContent = result ? fmtPct(result.confidence) : "--";
+      els.metricGroundedness.textContent = result ? fmtPct(result.groundedness_score) : "--";
+      els.metricProvenance.textContent = result ? fmtPct(result.provenance_score) : "--";
+      els.metricFaithfulness.textContent = fmtPct(quality.faithfulness_score);
+      els.metricRelevance.textContent = fmtPct(quality.answer_relevance_score);
+      els.metricCitationSupport.textContent = fmtPct(quality.citation_support_score);
+      els.metricTime.textContent = result ? fmtSec(result.total_time) : "--";
+
+      els.citationsBox.textContent = result?.legal_references?.length ? result.legal_references.join("\\n") : "Chưa có dữ liệu.";
+      els.selectedEvidenceBox.textContent = result?.selected_evidence?.length
+        ? result.selected_evidence.slice(0, 4).map((item, idx) => [
+              `${idx + 1}. ${item.citation || "Không rõ nguồn"}`,
+            `Điểm chọn: ${fmtPct(item.selector_score)}`,
+            `Đoạn trích: ${item.text || ""}`,
+          ].join("\\n")).join("\\n\\n")
+        : "Chưa có dữ liệu.";
+      els.evidenceSpansBox.textContent = result?.evidence_spans?.length
+        ? result.evidence_spans.slice(0, 5).map((item, idx) => [
+            `${idx + 1}. ${item.citation || "Không rõ nguồn"}`,
+            `Nhãn: ${item.label || ""}`,
+            `Độ bám nguồn: ${fmtPct(item.provenance_score)}`,
+            `Mệnh đề: ${item.claim || ""}`,
+            `Căn cứ: ${item.evidence || ""}`,
+          ].join("\\n")).join("\\n\\n")
+        : "Chưa có dữ liệu.";
+      els.retrievedChunksBox.textContent = result?.retrieved_chunks?.length
+        ? result.retrieved_chunks.slice(0, 5).map((item, idx) => {
+            const metadata = item.metadata || {};
+            return [
+              `${idx + 1}. ${metadata.document_title || metadata.filename || "Không rõ nguồn"}`,
+              `Chương/Điều/Khoản/Điểm: ${metadata.chapter || "-"} | ${metadata.article || "-"} | ${metadata.section || "-"} | ${metadata.point || "-"}`,
+              `Trang: ${metadata.page || "-"}`,
+              `Nội dung: ${item.text || ""}`,
+            ].join("\\n");
+          }).join("\\n\\n")
+        : "Chưa có dữ liệu.";
+    }
+
+    function render() {
+      renderList();
+      renderMessages();
+      renderInspector();
+      applySettings(state.settings || currentSettings());
+    }
+
+    function setRuntimeStatus(payload) {
+      if (payload?.providers) {
+        defaultProviderSettings.default_provider = payload.providers.default_provider || defaultProviderSettings.default_provider;
+        defaultProviderSettings.groq = { ...defaultProviderSettings.groq, ...(payload.providers.groq || {}) };
+        defaultProviderSettings.ollama = { ...defaultProviderSettings.ollama, ...(payload.providers.ollama || {}) };
+      }
+      const loaded = Boolean(payload?.loaded);
+      const loading = Boolean(payload?.loading);
+      els.runtimeStatus.className = "pill" + (loaded ? "" : " off");
+      els.runtimeStatus.innerHTML = loading ? `<span class="dot"></span> Đang nạp` : (loaded ? "Sẵn sàng" : "Chưa nạp");
+      if (payload?.error) {
+        els.runtimeMeta.textContent = `Lỗi bootstrap: ${payload.error}`;
+      } else if (loading) {
+        els.runtimeMeta.textContent = "Server đang nạp sẵn runtime, trình duyệt sẽ mở khi hệ thống sẵn sàng.";
+      } else if (loaded) {
+        els.runtimeMeta.textContent = `Loaded lúc ${payload.loaded_at || "--"} | ${payload.load_seconds || "--"}s`;
+      } else {
+        els.runtimeMeta.textContent = "Server chưa bắt đầu nạp runtime.";
+      }
+    }
+
+    async function refreshHealth() {
+      try {
+        const response = await fetch("/api/health");
+        const payload = await response.json();
+        setRuntimeStatus(payload);
+      } catch {
+        setRuntimeStatus({ loaded: false, loading: false, error: "Không kết nối được API." });
+      }
+    }
+
+    async function warmRuntime() {
+      els.warmBtn.disabled = true;
+      els.warmBtn.textContent = "Đang nạp...";
+      try {
+        const response = await fetch("/api/bootstrap", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ force_reload: false }),
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.detail || "Bootstrap thất bại.");
+        setRuntimeStatus(payload);
+      } catch (error) {
+        setRuntimeStatus({ loaded: false, loading: false, error: error.message });
+      } finally {
+        els.warmBtn.disabled = false;
+        els.warmBtn.textContent = "Nạp runtime";
+      }
+    }
+
+    async function reloadKnowledge() {
+      const settings = state.settings || currentSettings();
+      els.reloadKnowledgeBtn.disabled = true;
+      els.warmBtn.disabled = true;
+      els.reloadKnowledgeBtn.textContent = "Đang rechunk...";
+      setRuntimeStatus({ loaded: false, loading: true, error: "", providers: defaultProviderSettings });
+      els.runtimeMeta.textContent = "Đang rechunk lại dữ liệu và build lại index.";
+      try {
+        const response = await fetch("/api/rechunk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            llm_provider: settings.llm_provider || null,
+            force_reload: true,
+          }),
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.detail || "Rechunk dữ liệu thất bại.");
+        setRuntimeStatus(payload);
+        els.runtimeMeta.textContent = "Đã rechunk dữ liệu và build lại index.";
+      } catch (error) {
+        setRuntimeStatus({ loaded: false, loading: false, error: error.message, providers: defaultProviderSettings });
+      } finally {
+        els.reloadKnowledgeBtn.disabled = false;
+        els.warmBtn.disabled = false;
+        els.reloadKnowledgeBtn.textContent = "Rechunk data";
+      }
+    }
+
+    async function sendMessage() {
+      if (state.pending) return;
+      const conversation = active() || addConversation();
+      const message = els.messageInput.value.trim();
+      if (!message) return;
+
+      state.pending = true;
+      const settings = state.settings || currentSettings();
+      if (!conversation.messages.length || conversation.title === "Cuộc trò chuyện mới") {
+        conversation.title = message.slice(0, 44) || "Cuộc trò chuyện mới";
+      }
+      conversation.messages.push({ role: "user", content: message });
+      conversation.messages.push({ role: "assistant", content: "", loading: true, meta: "Đợi runtime và RAG pipeline phản hồi." });
+      conversation.updatedAt = new Date().toISOString();
+      persist();
+      render();
+      els.messageInput.value = "";
+
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message,
+            groq_api_key: settings.llm_provider === "groq" ? (currentSecrets().groq_api_key || null) : null,
+            llm_provider: settings.llm_provider,
+            remote_model: settings.llm_provider === "local" ? null : (settings.remote_model || null),
+            ollama_base_url: settings.llm_provider === "ollama" ? (settings.ollama_base_url || null) : null,
+            retrieval_mode: settings.retrieval_mode,
+            top_k: settings.top_k,
+            use_reranking: settings.use_reranking,
+            use_mmr: settings.use_mmr,
+            use_hierarchical_expansion: settings.use_hierarchical_expansion !== false,
+            use_evidence_selection: settings.use_evidence_selection !== false,
+            use_semantic_highlighting: settings.use_semantic_highlighting !== false,
+          }),
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.detail || "Gọi API thất bại.");
+        conversation.messages.pop();
+        const quality = payload.quality_metrics || {};
+        const assistantMeta = payload.show_metrics === false
+          ? ""
+          : `Confidence ${fmtPct(payload.confidence)} • Groundedness ${fmtPct(payload.groundedness_score)} • Provenance ${fmtPct(payload.provenance_score)} • Faithfulness ${fmtPct(quality.faithfulness_score)} • Relevance ${fmtPct(quality.answer_relevance_score)} • Citation ${fmtPct(quality.citation_support_score)}`;
+        conversation.messages.push({
+          role: "assistant",
+          content: payload.answer || "(Không có câu trả lời)",
+          references: payload.legal_references || [],
+          showReferences: payload.show_references !== false,
+          meta: assistantMeta,
+        });
+        conversation.lastResult = payload;
+        conversation.updatedAt = new Date().toISOString();
+        persist();
+        render();
+        refreshHealth();
+      } catch (error) {
+        conversation.messages.pop();
+        conversation.messages.push({
+          role: "assistant",
+          content: `Lỗi khi gọi API: ${error.message}`,
+          meta: "Kiểm tra logs của server hoặc trạng thái runtime.",
+        });
+        conversation.updatedAt = new Date().toISOString();
+        persist();
+        render();
+      } finally {
+        state.pending = false;
+      }
+    }
+
+    els.newChatBtn.addEventListener("click", () => { addConversation(); render(); });
+    els.warmBtn.addEventListener("click", warmRuntime);
+    els.reloadKnowledgeBtn.addEventListener("click", reloadKnowledge);
+    els.openSettingsBtn.addEventListener("click", openSettingsModal);
+    els.closeSettingsBtn.addEventListener("click", closeSettingsModal);
+    els.saveSettingsBtn.addEventListener("click", async () => {
+      try {
+        await saveSharedSettings(currentSettings());
+      } catch (error) {
+        alert(`Không lưu được thiết lập: ${error.message}`);
+        return;
+      }
+      closeSettingsModal();
+    });
+    els.settingsModal.addEventListener("click", (event) => {
+      if (event.target === els.settingsModal) {
+        closeSettingsModal();
+      }
+    });
+    els.sendBtn.addEventListener("click", sendMessage);
+    els.messageInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+      }
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && els.settingsModal.classList.contains("open")) {
+        closeSettingsModal();
+      }
+    });
+
+    [els.llmProviderSelect, els.remoteModelInput, els.ollamaUrlInput, els.modeSelect, els.topKInput, els.rerankSelect, els.mmrSelect, els.semanticHighlightingSelect].forEach((item) => {
+      item.addEventListener("change", () => {
+        state.settings = currentSettings();
+        updateProviderControls();
+      });
+    });
+
+    async function init() {
+      load();
+      await loadSharedSettings();
+      render();
+      updateProviderControls();
+      refreshHealth();
+    }
+
+    init();
+  </script>
+</body>
+</html>

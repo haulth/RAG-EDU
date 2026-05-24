@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
+
+# Virtual environments
+venv/
+.venv/
+
+# Local runtime / temp
+.tmp/
+.grapuco/
+bootstrap_trace.txt
+
+# Large local artifacts
+models/
+processed_data/
+
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Secrets / local overrides
+local_app_settings.json
+local_inference_settings.json
+!.gitkeep
+
+# Build / package
+build/
+dist/
+*.egg-info/
+
+test_logs/
+tests/
